@@ -80,7 +80,7 @@ fun QuestionsScreen(onBack: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(1) }
     val edits = remember { mutableStateMapOf<String, String>() }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         ScreenHeader("Editar perguntas", onBack)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             allTabs.forEachIndexed { i, t -> Pill(t.label, selected = tab == i, onClick = { tab = i }) }

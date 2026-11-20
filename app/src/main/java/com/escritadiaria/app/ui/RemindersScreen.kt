@@ -64,7 +64,7 @@ fun RemindersScreen(onBack: () -> Unit, onEditQuestions: () -> Unit) {
     var downloading by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { modelReady = Recognition.isModelReady() }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         ScreenHeader("Ajustes", onBack) {
             BigButton("Editar perguntas", onEditQuestions, primary = false, height = 48.dp, icon = Icons.Filled.Edit)
         }

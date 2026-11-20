@@ -50,6 +50,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.material.icons.filled.TextFields
+import com.escritadiaria.app.ink.Recognition
+import kotlinx.coroutines.Job
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +108,84 @@ class SessionViewModel(private val app: Application, val quick: Boolean) : Andro
     var pageW by mutableFloatStateOf(0f)
     var pageH by mutableFloatStateOf(0f)
 
+    // ---- Conversão ao vivo em cursiva ----
+    enum class ModelState { Checking, Downloading, Ready, Unavailable }
+
+    var modelState by mutableStateOf(ModelState.Checking)
+        private set
+    var showCursive by mutableStateOf(true)
+
+    /** Por bloco: linha da pauta → texto reconhecido (linhas já convertidas). */
+    val converted: Map<String, SnapshotStateMap<Int, String>> = steps.associateWith { mutableStateMapOf() }
+    private val dirty: Map<String, MutableSet<Int>> = steps.associateWith { mutableSetOf() }
+    private val versions: Map<String, HashMap<Int, Int>> = steps.associateWith { HashMap() }
+    private var pendingJob: Job? = null
+    private var lastLine = -1
+
+    private fun markDirty(block: String, lines: Set<Int>) {
+        val ver = versions.getValue(block)
+        lines.forEach { line ->
+            converted.getValue(block).remove(line)
+            ver[line] = (ver[line] ?: 0) + 1
+            dirty.getValue(block).add(line)
+        }
+    }
+
+    /** Converte as linhas pedidas; ignora resultados de linhas que mudaram enquanto eram lidas. */
+    private fun convert(block: String, lines: Set<Int>) {
+        if (modelState != ModelState.Ready || lines.isEmpty()) return
+        viewModelScope.launch {
+            for (line in lines.sorted()) {
+                val ver = versions.getValue(block)[line]
+                val strokes = inks.getValue(block).filter { it.line == line }
+                if (strokes.isEmpty()) {
+                    dirty.getValue(block).remove(line)
+                    continue
+                }
+                val text = Recognition.recognizeStrokes(strokes, pageW) ?: continue
+                if (versions.getValue(block)[line] != ver) continue
+                dirty.getValue(block).remove(line)
+                if (text.isNotBlank()) converted.getValue(block)[line] = text
+            }
+        }
+    }
+
+    private fun scheduleConvert(block: String) {
+        pendingJob?.cancel()
+        pendingJob = viewModelScope.launch {
+            delay(1200)
+            convert(block, dirty.getValue(block).toSet())
+        }
+    }
+
+    /** Traço novo: a linha dele volta a mostrar a escrita; a linha anterior é convertida na hora. */
+    fun onStrokeAdded(stroke: InkStroke) {
+        val block = step
+        markDirty(block, setOf(stroke.line))
+        if (lastLine >= 0 && lastLine != stroke.line) convert(block, setOf(lastLine))
+        lastLine = stroke.line
+        scheduleConvert(block)
+    }
+
+    fun onStrokesRemoved(lines: Set<Int>) {
+        markDirty(step, lines)
+        scheduleConvert(step)
+    }
+
+    fun undo() {
+        val list = inks.getValue(step)
+        if (list.isEmpty()) return
+        val s = list.removeAt(list.lastIndex)
+        onStrokesRemoved(setOf(s.line))
+    }
+
+    fun clearPage() {
+        inks.getValue(step).clear()
+        converted.getValue(step).clear()
+        dirty.getValue(step).clear()
+        lastLine = -1
+    }
+
     private var endAt = 0L
     private var alertFired = false
 
@@ -129,6 +212,18 @@ class SessionViewModel(private val app: Application, val quick: Boolean) : Andro
     }
 
     init {
+        viewModelScope.launch {
+            modelState = when {
+                !Recognition.isSupported -> ModelState.Unavailable
+                Recognition.isModelReady() -> ModelState.Ready
+                else -> {
+                    modelState = ModelState.Downloading
+                    if (Recognition.ensureModel()) ModelState.Ready else ModelState.Unavailable
+                }
+            }
+            // O que foi escrito enquanto o pacote baixava é convertido agora.
+            if (modelState == ModelState.Ready) steps.forEach { b -> convert(b, inks.getValue(b).map { it.line }.toSet()) }
+        }
         startStep(0)
         viewModelScope.launch {
             while (isActive) {
@@ -148,6 +243,7 @@ class SessionViewModel(private val app: Application, val quick: Boolean) : Andro
         alert = false
         alertFired = false
         eraser = false
+        lastLine = -1
     }
 
     private fun tick() {
@@ -225,6 +321,7 @@ class SessionViewModel(private val app: Application, val quick: Boolean) : Andro
                 onFinished(ritualId.await())
             }
         } else {
+            convert(step, dirty.getValue(step).toSet())
             viewModelScope.launch { save(finished = false) }
             startStep(stepIndex + 1)
         }
@@ -264,7 +361,7 @@ fun SessionScreen(quick: Boolean, onExit: () -> Unit, onFinished: (Long) -> Unit
     val step = vm.step
     val strokes = vm.inks.getValue(step)
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Barra superior: sair, progresso dos blocos, cronômetro.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             CircleIconButton(Icons.Filled.Close, "Sair do ritual", { confirmExit = true })
@@ -341,10 +438,20 @@ fun SessionScreen(quick: Boolean, onExit: () -> Unit, onFinished: (Long) -> Unit
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pill("Caneta", selected = !vm.eraser, onClick = { vm.eraser = false }, dark = false, icon = Icons.Filled.Edit)
                     Pill("Borracha", selected = vm.eraser, onClick = { vm.eraser = true }, dark = false, icon = Icons.Outlined.CleaningServices)
-                    CircleIconButton(Icons.AutoMirrored.Filled.Undo, "Desfazer", { if (strokes.isNotEmpty()) strokes.removeAt(strokes.lastIndex) }, size = 44.dp)
-                    Pill("Limpar página", selected = false, onClick = { if (strokes.isNotEmpty()) confirmClear = true })
-                    Spacer(Modifier.weight(1f))
-                    Text("Botão da S Pen apaga · a palma é ignorada", fontSize = 13.sp, color = C.Muted)
+                    CircleIconButton(Icons.AutoMirrored.Filled.Undo, "Desfazer", { vm.undo() }, size = 44.dp)
+                    Pill("Limpar", selected = false, onClick = { if (strokes.isNotEmpty()) confirmClear = true })
+                    Pill("Cursiva", selected = vm.showCursive, onClick = { vm.showCursive = !vm.showCursive }, dark = false, icon = Icons.Filled.TextFields)
+                    Text(
+                        when (vm.modelState) {
+                            SessionViewModel.ModelState.Checking -> ""
+                            SessionViewModel.ModelState.Downloading -> "Baixando a leitura da letra…"
+                            SessionViewModel.ModelState.Ready ->
+                                if (vm.showCursive) "Cada linha vira cursiva quando você passa para a próxima ou pausa." else "Mostrando a escrita original."
+                            SessionViewModel.ModelState.Unavailable -> "Leitura da letra indisponível: conecte à internet uma vez."
+                        },
+                        fontSize = 13.sp, color = if (vm.modelState == SessionViewModel.ModelState.Unavailable) C.WarnText else C.Muted,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 6.dp),
+                    )
                 }
                 val shape = RoundedCornerShape(16.dp)
                 Box(Modifier.weight(1f).fillMaxWidth().clip(shape).background(C.Paper).border(1.dp, C.CardBorder, shape)) {
@@ -353,6 +460,10 @@ fun SessionScreen(quick: Boolean, onExit: () -> Unit, onFinished: (Long) -> Unit
                             strokes = strokes,
                             eraser = vm.eraser,
                             modifier = Modifier.fillMaxSize(),
+                            converted = vm.converted.getValue(step),
+                            showCursive = vm.showCursive && vm.modelState == SessionViewModel.ModelState.Ready,
+                            onStrokeAdded = { vm.onStrokeAdded(it) },
+                            onStrokesRemoved = { vm.onStrokesRemoved(it) },
                             onPageSize = { w, h -> vm.pageW = w; vm.pageH = h },
                         )
                     }
@@ -375,7 +486,7 @@ fun SessionScreen(quick: Boolean, onExit: () -> Unit, onFinished: (Long) -> Unit
             onDismissRequest = { confirmClear = false },
             title = { Text("Limpar a página?") },
             text = { Text("Tudo o que foi escrito neste bloco será apagado.") },
-            confirmButton = { TextButton(onClick = { confirmClear = false; strokes.clear() }) { Text("Limpar") } },
+            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clearPage() }) { Text("Limpar") } },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancelar") } },
         )
     }

@@ -81,7 +81,10 @@ fun WeekScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 40.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         ScreenHeader("Minha semana", onBack) {
             CircleIconButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Semana anterior", { offset-- })
             Text(
@@ -150,14 +153,14 @@ fun WeekScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
             }
         }
 
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Panel(Modifier.weight(1f).fillMaxHeight(), gap = 6.dp) {
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Panel(Modifier.weight(1f), gap = 6.dp) {
                 Text("Ações do dia", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = C.Ink)
                 val withAction = rituals.filter { it.actionText.isNotBlank() }
                 if (withAction.isEmpty()) {
                     Text("As ações escritas no Bloco 3 aparecem aqui.", fontSize = 15.sp, color = C.Muted)
                 }
-                Column(Modifier.verticalScroll(rememberScrollState())) {
+                Column {
                     withAction.forEach { r ->
                         val date = LocalDate.ofEpochDay(r.epochDay)
                         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -43,12 +43,14 @@ object Recognition {
     private val lock = Mutex()
     private var recognizer: DigitalInkRecognizer? = null
 
+    // Tenta português do Brasil; se o ML Kit não tiver essa variante, cai para português genérico.
     private val model: DigitalInkRecognitionModel? by lazy {
-        runCatching {
-            DigitalInkRecognitionModelIdentifier.fromLanguageTag("pt-BR")
-                ?.let { DigitalInkRecognitionModel.builder(it).build() }
-        }.getOrNull()
+        listOf("pt-BR", "pt", "pt-PT").firstNotNullOfOrNull { tag ->
+            runCatching { DigitalInkRecognitionModelIdentifier.fromLanguageTag(tag) }.getOrNull()
+        }?.let { DigitalInkRecognitionModel.builder(it).build() }
     }
+
+    val isSupported: Boolean get() = model != null
 
     suspend fun isModelReady(): Boolean {
         val m = model ?: return false
@@ -76,10 +78,15 @@ object Recognition {
 
     /** Agrupa traços pela linha da pauta onde está o centro vertical de cada um. */
     fun groupLines(strokes: List<InkStroke>): List<List<InkStroke>> =
-        strokes.groupBy { s ->
-            val ys = s.points.map { it.y }
-            (((ys.min() + ys.max()) / 2f) / LINE_SPACING).toInt()
-        }.toSortedMap().values.toList()
+        strokes.groupBy { it.line }.toSortedMap().values.toList()
+
+    /** Reconhece os traços de uma linha. Retorna null se o pacote não estiver pronto ou der erro. */
+    suspend fun recognizeStrokes(strokes: List<InkStroke>, width: Float): String? {
+        if (strokes.isEmpty()) return ""
+        val c = client() ?: return null
+        return runCatching { recognizeLine(c, strokes, width) }
+            .getOrElse { Log.w(TAG, "reconhecimento falhou", it); null }
+    }
 
     private suspend fun recognizeLine(c: DigitalInkRecognizer, line: List<InkStroke>, width: Float): String {
         val ink = Ink.builder()

@@ -18,7 +18,19 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Preparar chave de assinatura
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_KEY_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Secret SIGNING_KEY ausente: o APK sai com chave temporária e não atualiza por cima."
+          fi
       - name: Compilar
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
       - name: Renomear APK
         run: cp app/build/outputs/apk/release/app-release.apk EscritaDiaria-${{ github.run_number }}.apk

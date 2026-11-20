@@ -13,15 +13,31 @@ android {
         applicationId = "com.escritadiaria.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        // No GitHub Actions o número do build vira o versionCode, então cada APK novo é uma atualização.
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = 100 + (build ?: 0)
+        versionName = "1.2" + (build?.let { " ($it)" } ?: "")
+    }
+
+    // Chave fixa: sem ela cada build teria uma assinatura diferente e o Android exigiria desinstalar.
+    // No GitHub Actions ela vem dos secrets SIGNING_KEY (base64 do .jks) e SIGNING_PASSWORD.
+    val keyFile = System.getenv("SIGNING_KEY_FILE")?.let { file(it) }?.takeIf { it.exists() }
+    val keyPassword = System.getenv("SIGNING_PASSWORD")
+    signingConfigs {
+        if (keyFile != null && !keyPassword.isNullOrBlank()) {
+            create("release") {
+                storeFile = keyFile
+                storePassword = keyPassword
+                keyAlias = "escrita"
+                this.keyPassword = keyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Assinado com a chave de debug para instalar direto no tablet (fora da Play Store).
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

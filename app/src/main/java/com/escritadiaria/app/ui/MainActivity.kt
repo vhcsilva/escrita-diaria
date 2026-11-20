@@ -5,11 +5,14 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -35,6 +38,11 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Desenha atrás das barras do sistema e reserva o espaço delas com padding (evita botões cortados).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) startRequest.value = intent?.getStringExtra(Notifs.EXTRA_START)
         if (Build.VERSION.SDK_INT >= 33 && !Notifs.canPost(this)) {
@@ -45,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 val store = remember { SettingsStore(applicationContext) }
                 val fontIndex by remember { store.flow.map { it.scriptFont } }.collectAsState(initial = 0)
                 CompositionLocalProvider(LocalScriptFont provides ScriptFonts.get(fontIndex)) {
-                    Box(Modifier.fillMaxSize().background(C.Ground)) {
+                    Box(Modifier.fillMaxSize().background(C.Ground).safeDrawingPadding()) {
                         AppNav(startRequest)
                     }
                 }

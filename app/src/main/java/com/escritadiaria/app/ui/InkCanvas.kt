@@ -25,6 +25,10 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import com.escritadiaria.app.data.InkPoint
 import com.escritadiaria.app.data.InkStroke
 import com.escritadiaria.app.data.LINE_SPACING
@@ -76,9 +80,17 @@ fun InkCanvas(
     strokes: SnapshotStateList<InkStroke>,
     eraser: Boolean,
     modifier: Modifier = Modifier,
+    converted: Map<Int, String> = emptyMap(),
+    showCursive: Boolean = false,
+    onStrokeAdded: (InkStroke) -> Unit = {},
+    onStrokesRemoved: (Set<Int>) -> Unit = {},
     onPageSize: (Float, Float) -> Unit = { _, _ -> },
 ) {
     val density = LocalDensity.current.density
+    val font = LocalScriptFont.current
+    val measurer = rememberTextMeasurer(cacheSize = 64)
+    val onAdded by rememberUpdatedState(onStrokeAdded)
+    val onRemoved by rememberUpdatedState(onStrokesRemoved)
     val live = remember { mutableStateListOf<InkPoint>() }
     var liveErasing by remember { mutableStateOf(false) }
     var penSeen by remember { mutableStateOf(false) }
@@ -93,13 +105,21 @@ fun InkCanvas(
 
     fun eraseAt(pt: InkPoint) {
         val r2 = ERASE_RADIUS * ERASE_RADIUS
-        strokes.removeAll { s ->
+        val hit = strokes.filter { s ->
             s.points.any { q -> val dx = q.x - pt.x; val dy = q.y - pt.y; dx * dx + dy * dy <= r2 }
+        }
+        if (hit.isNotEmpty()) {
+            strokes.removeAll(hit.toSet())
+            onRemoved(hit.map { it.line }.toSet())
         }
     }
 
     fun commit() {
-        if (!liveErasing && live.isNotEmpty()) strokes.add(InkStroke(live.toList()))
+        if (!liveErasing && live.isNotEmpty()) {
+            val s = InkStroke(live.toList())
+            strokes.add(s)
+            onAdded(s)
+        }
         live.clear()
     }
 
@@ -137,14 +157,33 @@ fun InkCanvas(
             },
     ) {
         drawRules(density, size.width, size.height)
+        val hidden = if (showCursive) converted.keys else emptySet()
         withTransform({ scale(density, density, Offset.Zero) }) {
             for (s in strokes) {
+                if (s.line in hidden) continue
                 val path = cache.getOrPut(s) { composePath(s.points) }
                 drawPath(path, C.Stroke, style = Stroke(width = s.width, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
             if (live.isNotEmpty() && !liveErasing) {
                 val tmp = InkStroke(live.toList())
                 drawPath(composePath(tmp.points), C.Stroke, style = Stroke(width = tmp.width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        if (showCursive) {
+            // Linhas já convertidas: texto cursivo apoiado na linha da pauta, começando onde a escrita começou.
+            val baseSize = (LINE_SPACING * 0.5f * font.scale).sp
+            for ((line, text) in converted) {
+                if (text.isBlank()) continue
+                val startX = (strokes.filter { it.line == line }.minOfOrNull { it.minX } ?: 8f) * density
+                val avail = (size.width - startX - 8f * density).coerceAtLeast(40f * density)
+                var style = TextStyle(fontFamily = font.family, fontSize = baseSize, color = C.Stroke)
+                var layout = measurer.measure(text, style, softWrap = false, maxLines = 1)
+                if (layout.size.width > avail) {
+                    style = style.copy(fontSize = baseSize * (avail / layout.size.width).coerceAtLeast(0.55f))
+                    layout = measurer.measure(text, style, softWrap = false, maxLines = 1)
+                }
+                val ruleY = (line + 1) * LINE_SPACING * density
+                drawText(layout, topLeft = Offset(startX, ruleY - 7f * density - layout.firstBaseline))
             }
         }
         if (cache.size > strokes.size + 50) cache.keys.retainAll(strokes.toSet())

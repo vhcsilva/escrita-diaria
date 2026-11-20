@@ -32,3 +32,12 @@ O GitHub Actions compila a cada push na `main` e publica o APK em Releases. Para
 ```
 
 Kotlin, Jetpack Compose, Room, DataStore e ML Kit Digital Ink Recognition. Android 8.0 ou mais novo.
+
+### Assinatura (para atualizar sem desinstalar)
+
+O APK é assinado com uma chave fixa guardada nos secrets do repositório (Settings › Secrets and variables › Actions):
+
+- `SIGNING_KEY`: o arquivo `.jks` em base64
+- `SIGNING_PASSWORD`: a senha da chave (alias `escrita`)
+
+Sem esses secrets o build ainda funciona, mas cada APK sai com uma chave diferente e o Android exige desinstalar antes de instalar o novo.

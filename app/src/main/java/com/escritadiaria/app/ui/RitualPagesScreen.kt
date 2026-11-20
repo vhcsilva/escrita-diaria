@@ -49,7 +49,7 @@ fun RitualPagesScreen(id: Long, onBack: () -> Unit) {
     val r = ritual
     val date = r?.let { LocalDate.ofEpochDay(it.epochDay) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         ScreenHeader(if (date != null) "${Content.longDate(date)} de ${date.year}" else "Ritual", onBack)
         if (r == null) return@Column
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

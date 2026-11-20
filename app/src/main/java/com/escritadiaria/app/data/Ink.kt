@@ -8,6 +8,17 @@ class InkStroke(val points: List<InkPoint>) {
         val avg = if (points.isEmpty()) 0.5f else points.map { it.p }.average().toFloat()
         1.4f + avg.coerceIn(0f, 1f) * 2.4f
     }
+
+    /** Linha da pauta onde está o centro vertical do traço (0 = primeira linha). */
+    val line: Int by lazy {
+        if (points.isEmpty()) 0
+        else {
+            val ys = points.map { it.y }
+            (((ys.min() + ys.max()) / 2f) / LINE_SPACING).toInt().coerceAtLeast(0)
+        }
+    }
+
+    val minX: Float by lazy { points.minOfOrNull { it.x } ?: 0f }
 }
 
 /** Espaço entre as linhas da pauta, em dp. Também usado para separar linhas no reconhecimento. */

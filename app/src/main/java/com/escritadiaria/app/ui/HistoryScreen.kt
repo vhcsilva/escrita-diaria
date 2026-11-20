@@ -150,7 +150,7 @@ fun HistoryScreen(onBack: () -> Unit, onOpenPages: (Long) -> Unit) {
     }
     val shownId = if (results.any { it.id == selectedId }) selectedId else results.firstOrNull()?.id ?: -1L
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ScreenHeader("Histórico", onBack) {
             TextField(
                 value = query,

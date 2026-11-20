@@ -68,30 +68,31 @@ fun HomeScreen(onStart: (String) -> Unit, onNavigate: (String) -> Unit) {
     val week = previewWeek.coerceIn(1, 5)
 
     Row(
-        Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 36.dp),
+        Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(40.dp),
     ) {
-        Column(Modifier.weight(1f).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(Modifier.weight(1f).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     if (previewDay == todayIdx) Content.longDate(today) else "Prévia do tema de ${day.full.lowercase()}",
                     fontSize = 16.sp, color = C.Muted, fontWeight = FontWeight.Medium,
                 )
-                Text("Bom dia. Antes do celular, o papel.", style = TitleStyle.copy(fontSize = 40.sp, lineHeight = 46.sp))
+                Text("Bom dia. Antes do celular, o papel.", style = TitleStyle.copy(fontSize = 34.sp, lineHeight = 40.sp))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Content.days.forEachIndexed { i, d ->
                     Pill(d.short, selected = i == previewDay, onClick = { previewDay = i }, height = 48.dp)
                 }
             }
-            Panel(Modifier.weight(1f).fillMaxWidth(), padding = 28.dp) {
-                Eyebrow("Tema de ${day.full.lowercase()}", C.AccentText)
-                Text(day.theme, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = C.Ink)
-                Text(day.sub, fontSize = 17.sp, color = C.Muted)
-                Spacer(Modifier.size(4.dp))
-                Text("Pergunta $week de 5 · muda a cada semana", fontSize = 14.sp, color = C.Muted, fontWeight = FontWeight.Medium)
-                Text(settings.question(previewDay, week - 1), fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium, color = C.Ink)
-                Spacer(Modifier.weight(1f))
+            Panel(Modifier.weight(1f).fillMaxWidth(), padding = 24.dp) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Eyebrow("Tema de ${day.full.lowercase()}", C.AccentText)
+                    Text(day.theme, fontSize = 34.sp, fontWeight = FontWeight.SemiBold, color = C.Ink)
+                    Text(day.sub, fontSize = 17.sp, color = C.Muted)
+                    Spacer(Modifier.size(4.dp))
+                    Text("Pergunta $week de 5 · muda a cada semana", fontSize = 14.sp, color = C.Muted, fontWeight = FontWeight.Medium)
+                    Text(settings.question(previewDay, week - 1), fontSize = 23.sp, lineHeight = 31.sp, fontWeight = FontWeight.Medium, color = C.Ink)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Semana do ciclo", fontSize = 14.sp, color = C.Muted, modifier = Modifier.padding(end = 6.dp))
                     (1..5).forEach { n ->
@@ -136,7 +137,7 @@ fun HomeScreen(onStart: (String) -> Unit, onNavigate: (String) -> Unit) {
                 color = C.Accent,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.padding(horizontal = 28.dp, vertical = 22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(if (done == null) "Começar ritual" else "Escrever de novo", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                     Text("15 min · 3 blocos · à mão", fontSize = 16.sp, color = Color.White)
                 }
