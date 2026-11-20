@@ -73,9 +73,10 @@ fun WeekScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val byDay: Map<Long, Ritual> = rituals.groupBy { it.epochDay }.mapValues { it.value.last() }
     val cycle = settings.cycleWeek(monday)
 
+    val font = LocalScriptFont.current
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         if (uri != null) scope.launch {
-            val ok = withContext(Dispatchers.IO) { PdfExporter.write(context, uri, rituals) }
+            val ok = withContext(Dispatchers.IO) { PdfExporter.write(context, uri, rituals, font.resId, font.scale) }
             Toast.makeText(context, if (ok) "PDF salvo." else "Não foi possível salvar o PDF.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -174,7 +175,7 @@ fun WeekScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                                 colors = CheckboxDefaults.colors(checkedColor = C.Accent),
                             )
                             Text(Content.days[r.dayIndex].short, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = C.Muted, modifier = Modifier.width(44.dp))
-                            Text(r.actionText, fontSize = 15.sp, color = C.Ink)
+                            ScriptText(r.actionText, size = 16.sp)
                         }
                     }
                 }

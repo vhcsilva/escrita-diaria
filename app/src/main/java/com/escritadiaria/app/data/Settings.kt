@@ -28,8 +28,22 @@ data class AppSettings(
     val randomTimes: Boolean = false,
     val fixedTimes: List<Int> = Content.defaultFixedTimes,
     val cycleStart: Long = -1,
+    /** Fonte cursiva usada para mostrar o texto convertido (0..2). */
+    val scriptFont: Int = 0,
     val overrides: Map<String, String> = emptyMap(),
 ) {
+    fun b1Prompt(idx: Int): String =
+        overrides["b1_$idx"]?.takeIf { it.isNotBlank() } ?: Content.b1Full[idx]
+
+    fun b3Prompt(idx: Int): String =
+        overrides["b3_$idx"]?.takeIf { it.isNotBlank() } ?: Content.b3Full[idx]
+
+    /** Perguntas do Bloco 1 (a versão rápida usa a 1ª e a 3ª). */
+    fun b1Prompts(quick: Boolean): List<String> = if (quick) listOf(b1Prompt(0), b1Prompt(2)) else (0..2).map { b1Prompt(it) }
+
+    /** Itens do Bloco 3 (a versão rápida usa só a ação). */
+    fun b3Prompts(quick: Boolean): List<String> = if (quick) listOf(b3Prompt(0)) else (0..2).map { b3Prompt(it) }
+
     fun question(day: Int, idx: Int): String =
         overrides["q_${day}_$idx"]?.takeIf { it.isNotBlank() } ?: Content.days[day].defaults[idx]
 
@@ -45,6 +59,8 @@ data class AppSettings(
     }
 }
 
+private val OVERRIDE_PREFIXES = listOf("q_", "dp_", "b1_", "b3_")
+
 class SettingsStore(private val context: Context) {
     private object K {
         val morningEnabled = booleanPreferencesKey("morning_enabled")
@@ -56,6 +72,7 @@ class SettingsStore(private val context: Context) {
         val randomTimes = booleanPreferencesKey("random_times")
         val fixedTimes = stringPreferencesKey("fixed_times")
         val cycleStart = longPreferencesKey("cycle_start")
+        val scriptFont = intPreferencesKey("script_font")
     }
 
     private fun parseInts(s: String?, fallback: List<Int>): List<Int> {
@@ -66,7 +83,7 @@ class SettingsStore(private val context: Context) {
     val flow: Flow<AppSettings> = context.dataStore.data.map { p ->
         val d = AppSettings()
         val overrides = p.asMap()
-            .filterKeys { it.name.startsWith("q_") || it.name.startsWith("dp_") }
+            .filterKeys { k -> OVERRIDE_PREFIXES.any { k.name.startsWith(it) } }
             .mapNotNull { (k, v) -> (v as? String)?.let { k.name to it } }
             .toMap()
         AppSettings(
@@ -79,6 +96,7 @@ class SettingsStore(private val context: Context) {
             randomTimes = p[K.randomTimes] ?: d.randomTimes,
             fixedTimes = parseInts(p[K.fixedTimes], d.fixedTimes),
             cycleStart = p[K.cycleStart] ?: d.cycleStart,
+            scriptFont = (p[K.scriptFont] ?: d.scriptFont).coerceIn(0, 2),
             overrides = overrides,
         )
     }
@@ -97,6 +115,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setQuestionCount(v: Int) = edit { it[K.questionCount] = v }
     suspend fun setRandomTimes(v: Boolean) = edit { it[K.randomTimes] = v }
     suspend fun setFixedTimes(v: List<Int>) = edit { it[K.fixedTimes] = v.joinToString(",") }
+
+    suspend fun setScriptFont(v: Int) = edit { it[K.scriptFont] = v }
 
     suspend fun ensureCycleStart() = edit {
         if (it[K.cycleStart] == null) it[K.cycleStart] = mondayOf(LocalDate.now()).toEpochDay()

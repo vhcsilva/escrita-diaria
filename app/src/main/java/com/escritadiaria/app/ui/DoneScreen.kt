@@ -111,7 +111,7 @@ fun DoneScreen(id: Long, onHome: () -> Unit, onWeek: () -> Unit) {
                     value = vm.action,
                     onValueChange = { vm.action = it },
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, color = C.Ink),
+                    textStyle = scriptStyle(20.sp, C.Ink, LocalScriptFont.current),
                     placeholder = {
                         Text(if (vm.status == DoneViewModel.Status.Reading) "Lendo sua letra…" else "Escreva aqui a ação de hoje")
                     },

@@ -11,6 +11,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.escritadiaria.app.data.SettingsStore
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -36,8 +42,12 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             AppTheme {
-                Box(Modifier.fillMaxSize().background(C.Ground)) {
-                    AppNav(startRequest)
+                val store = remember { SettingsStore(applicationContext) }
+                val fontIndex by remember { store.flow.map { it.scriptFont } }.collectAsState(initial = 0)
+                CompositionLocalProvider(LocalScriptFont provides ScriptFonts.get(fontIndex)) {
+                    Box(Modifier.fillMaxSize().background(C.Ground)) {
+                        AppNav(startRequest)
+                    }
                 }
             }
         }

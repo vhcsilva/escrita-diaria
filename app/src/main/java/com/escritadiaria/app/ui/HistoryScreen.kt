@@ -267,14 +267,14 @@ private fun ResultRow(r: RitualSummary, nq: String, selected: Boolean, onClick: 
                     r.question.ifBlank { "Versão rápida" + if (r.actionText.isNotBlank()) ": ${r.actionText}" else "" },
                     fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = C.Ink, maxLines = 2,
                 )
-                Text(
+                if (sn.prefix.isNotEmpty()) Text(sn.prefix, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = C.Muted)
+                ScriptText(
                     buildAnnotatedString {
-                        append(sn.prefix)
                         append(sn.before)
-                        withStyle(SpanStyle(background = C.Highlight, color = C.Ink)) { append(sn.hit) }
+                        withStyle(SpanStyle(background = C.Highlight)) { append(sn.hit) }
                         append(sn.after)
                     },
-                    fontSize = 14.sp, lineHeight = 20.sp, color = Color(0xFF3A4252), maxLines = 3,
+                    size = 15.sp, maxLines = 3,
                 )
             }
         }
@@ -286,9 +286,10 @@ private fun RitualDetail(r: Ritual, onOpenPages: () -> Unit, onSaveText: (String
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<String?>(null) }
+    val font = LocalScriptFont.current
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         if (uri != null) scope.launch {
-            val ok = withContext(Dispatchers.IO) { PdfExporter.write(context, uri, listOf(r)) }
+            val ok = withContext(Dispatchers.IO) { PdfExporter.write(context, uri, listOf(r), font.resId, font.scale) }
             Toast.makeText(context, if (ok) "PDF salvo." else "Não foi possível salvar o PDF.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -315,10 +316,11 @@ private fun RitualDetail(r: Ritual, onOpenPages: () -> Unit, onSaveText: (String
                             InkPreview(strokes, r.pageW, r.pageH, Modifier.fillMaxSize().padding(2.dp))
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                r.text(b).ifBlank { if (r.recognized) "(sem texto)" else "Texto ainda não convertido." },
-                                fontSize = 14.sp, lineHeight = 20.sp, color = C.Ink,
-                            )
+                            if (r.text(b).isNotBlank()) {
+                                ScriptText(r.text(b), size = 16.sp)
+                            } else {
+                                Text(if (r.recognized) "(sem texto)" else "Texto ainda não convertido.", fontSize = 14.sp, color = C.Muted)
+                            }
                             TextButton(onClick = { editing = b }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                                 Text("Corrigir texto", fontSize = 13.sp, color = C.AccentText)
                             }
@@ -327,7 +329,10 @@ private fun RitualDetail(r: Ritual, onOpenPages: () -> Unit, onSaveText: (String
                 }
             }
             if (r.actionText.isNotBlank()) {
-                Text("Ação: ${r.actionText}${if (r.actionDone) " ✓" else ""}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = C.Ink)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (r.actionDone) "Ação ✓" else "Ação", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = C.Muted)
+                    ScriptText(r.actionText, size = 16.sp)
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

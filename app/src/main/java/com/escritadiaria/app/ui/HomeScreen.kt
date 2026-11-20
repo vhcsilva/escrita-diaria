@@ -16,7 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -125,7 +125,7 @@ fun HomeScreen(onStart: (String) -> Unit, onNavigate: (String) -> Unit) {
                                 },
                                 colors = CheckboxDefaults.colors(checkedColor = C.Accent),
                             )
-                            Text(done.actionText, fontSize = 16.sp, color = C.Ink, modifier = Modifier.weight(1f))
+                            ScriptText(done.actionText, size = 17.sp, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -172,7 +172,7 @@ fun HomeScreen(onStart: (String) -> Unit, onNavigate: (String) -> Unit) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BigButton("Lembretes", { onNavigate("reminders") }, Modifier.weight(1f), primary = false, height = 52.dp, icon = Icons.Filled.NotificationsNone)
+                BigButton("Ajustes", { onNavigate("reminders") }, Modifier.weight(1f), primary = false, height = 52.dp, icon = Icons.Filled.Settings)
                 BigButton("Semana", { onNavigate("week") }, Modifier.weight(1f), primary = false, height = 52.dp, icon = Icons.Filled.CalendarMonth)
             }
             BigButton("Histórico e busca", { onNavigate("history") }, Modifier.fillMaxWidth(), primary = false, height = 52.dp, icon = Icons.Filled.Search)

@@ -65,7 +65,7 @@ fun RemindersScreen(onBack: () -> Unit, onEditQuestions: () -> Unit) {
     LaunchedEffect(Unit) { modelReady = Recognition.isModelReady() }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        ScreenHeader("Lembretes", onBack) {
+        ScreenHeader("Ajustes", onBack) {
             BigButton("Editar perguntas", onEditQuestions, primary = false, height = 48.dp, icon = Icons.Filled.Edit)
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -73,6 +73,28 @@ fun RemindersScreen(onBack: () -> Unit, onEditQuestions: () -> Unit) {
                 Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                Panel(gap = 14.dp) {
+                    SettingRow("Fonte do texto convertido", "Como aparece o que você escreveu à mão depois de convertido.") {}
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ScriptFonts.all.forEachIndexed { i, f ->
+                            val selected = s.scriptFont == i
+                            Surface(
+                                onClick = { change { store.setScriptFont(i) } },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (selected) C.AccentSoft else androidx.compose.ui.graphics.Color.White,
+                                border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) C.Accent else C.CardBorder),
+                            ) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    ScriptText("Hoje eu começo.", size = 20.sp, font = f, maxLines = 1)
+                                    Text(f.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = C.Ink)
+                                    Text(f.description, fontSize = 12.sp, color = C.Muted)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Panel(gap = 16.dp) {
                     SettingRow("Ritual da manhã", "Avisa com o tema do dia da semana. Toque num dia para mudar o horário.") {
                         AppSwitch(s.morningEnabled, { v -> change { store.setMorningEnabled(v) } }, "Ritual da manhã")

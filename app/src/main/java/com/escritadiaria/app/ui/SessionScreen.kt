@@ -385,9 +385,9 @@ fun SessionScreen(quick: Boolean, onExit: () -> Unit, onFinished: (Long) -> Unit
 private fun BlockInfo(vm: SessionViewModel, step: String) {
     val minutes = vm.duration(step) / 60
     val (eyebrow, desc, prompts) = when (step) {
-        "b1" -> Triple("Bloco 1 · $minutes min", "Relatório de status, não reflexão. Uma linha por pergunta.", if (vm.quick) Content.b1Quick else Content.b1Full)
+        "b1" -> Triple("Bloco 1 · $minutes min", "Relatório de status, não reflexão. Uma linha por pergunta.", vm.settings.b1Prompts(vm.quick))
         "b2" -> Triple("Bloco 2 · $minutes min · ${Content.days[vm.dayIndex].theme}", "Escreva sem parar até o tempo acabar. Sem tentar escrever bonito.", listOf(vm.question))
-        else -> Triple("Bloco 3 · $minutes min", "Sem uma ação concreta, o ritual vira só um diário. Se faltar tempo, faça só este bloco.", if (vm.quick) Content.b3Quick else Content.b3Full)
+        else -> Triple("Bloco 3 · $minutes min", "Sem uma ação concreta, o ritual vira só um diário. Se faltar tempo, faça só este bloco.", vm.settings.b3Prompts(vm.quick))
     }
     Eyebrow(eyebrow, C.AccentText)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

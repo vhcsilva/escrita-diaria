@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -23,21 +24,28 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.escritadiaria.app.data.AppDb
 import com.escritadiaria.app.data.Content
 import com.escritadiaria.app.data.InkCodec
+import com.escritadiaria.app.data.LINE_SPACING
 import java.time.LocalDate
 
-/** As páginas originais de um ritual, em tamanho grande. */
+/** As páginas de um ritual: a escrita original ou o texto convertido em fonte cursiva, sobre a pauta. */
 @Composable
 fun RitualPagesScreen(id: Long, onBack: () -> Unit) {
     val context = LocalContext.current
     val dao = remember { AppDb.get(context).rituals() }
     val ritual by remember(id) { dao.observe(id) }.collectAsState(initial = null)
     var block by rememberSaveable { mutableStateOf("b1") }
+    var cursive by rememberSaveable { mutableStateOf(true) }
     val r = ritual
     val date = r?.let { LocalDate.ofEpochDay(it.epochDay) }
 
@@ -53,23 +61,58 @@ fun RitualPagesScreen(id: Long, onBack: () -> Unit) {
                 }
                 Pill(label, selected = block == b, onClick = { block = b })
             }
+            Spacer(Modifier.weight(1f))
+            Pill("Em cursiva", selected = cursive, onClick = { cursive = true }, dark = false)
+            Pill("Escrita original", selected = !cursive, onClick = { cursive = false }, dark = false)
         }
         val current = if (block in r.blocks()) block else "b1"
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            val shape = RoundedCornerShape(16.dp)
-            val strokes = remember(r.id, current, r.ink(current)) { InkCodec.decode(r.ink(current)) }
-            Box(Modifier.weight(1f).fillMaxHeight().clip(shape).background(C.Paper).border(1.dp, C.CardBorder, shape)) {
+        if (current == "b2") Text(r.question, fontSize = 18.sp, color = C.Muted)
+        val shape = RoundedCornerShape(16.dp)
+        Box(Modifier.weight(1f).fillMaxWidth().clip(shape).background(C.Paper).border(1.dp, C.CardBorder, shape)) {
+            if (cursive) {
+                CursivePage(r.text(current), r.recognized)
+            } else {
+                val strokes = remember(r.id, current, r.ink(current)) { InkCodec.decode(r.ink(current)) }
                 InkPreview(strokes, r.pageW, r.pageH, Modifier.fillMaxSize())
             }
-            Panel(Modifier.width(360.dp).fillMaxHeight(), gap = 10.dp) {
-                if (current == "b2") Text(r.question, fontSize = 17.sp, color = C.Ink)
-                Eyebrow("Texto reconhecido")
-                Text(
-                    r.text(current).ifBlank { if (r.recognized) "(sem texto)" else "Ainda não convertido." },
-                    fontSize = 16.sp, lineHeight = 23.sp, color = C.Ink,
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                )
+        }
+    }
+}
+
+/** Texto em cursiva alinhado às linhas da pauta, como se tivesse sido escrito à mão. */
+@Composable
+private fun CursivePage(text: String, recognized: Boolean) {
+    val font = LocalScriptFont.current
+    val density = LocalDensity.current
+    val lineSp = with(density) { LINE_SPACING.dp.toSp() }
+    val ruleColor = C.Rule
+    val stepPx = with(density) { LINE_SPACING.dp.toPx() }
+    val scroll = rememberScrollState()
+    Box(
+        Modifier.fillMaxSize().drawBehind {
+            // As linhas acompanham a rolagem do texto.
+            var y = stepPx - (scroll.value % stepPx)
+            while (y < size.height) {
+                drawLine(ruleColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+                y += stepPx
             }
+        },
+    ) {
+        if (text.isBlank()) {
+            Text(
+                if (recognized) "Nada escrito neste bloco." else "O texto ainda não foi convertido. Abra o app com internet uma vez para baixar o pacote de leitura da letra.",
+                fontSize = 16.sp, color = C.Muted, modifier = Modifier.padding(24.dp).width(560.dp),
+            )
+        } else {
+            Text(
+                text,
+                // Cada linha ocupa exatamente uma linha da pauta; a base da letra fica sobre a linha.
+                style = TextStyle(
+                    fontFamily = font.family, fontSize = 26.sp * font.scale, lineHeight = lineSp, color = C.Stroke,
+                    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Bottom, LineHeightStyle.Trim.None),
+                ),
+                modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 28.dp),
+            )
         }
     }
 }

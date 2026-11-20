@@ -108,13 +108,11 @@ object Content {
         "O que eu disse ontem que faria? Fiz?",
         "O que estou evitando agora?",
     )
-    val b1Quick = listOf(b1Full[0], b1Full[2])
     val b3Full = listOf(
         "Uma ação pequena, com horário, que a pessoa que estou me tornando faria hoje.",
         "Uma coisa que não vou fazer hoje.",
         "Uma frase para carregar durante o dia.",
     )
-    val b3Quick = listOf(b3Full[0])
 
     /** Duração de cada bloco, em segundos. */
     fun duration(block: String, quick: Boolean): Int = when {

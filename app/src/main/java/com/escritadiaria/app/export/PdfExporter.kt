@@ -10,6 +10,7 @@ import android.net.Uri
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import androidx.core.content.res.ResourcesCompat
 import com.escritadiaria.app.data.Content
 import com.escritadiaria.app.data.InkCodec
 import com.escritadiaria.app.data.InkPoint
@@ -47,7 +48,8 @@ object PdfExporter {
         else -> "Bloco 3 · Direção do dia"
     }
 
-    fun write(context: Context, uri: Uri, rituals: List<Ritual>): Boolean {
+    /** [fontRes]/[fontScale]: fonte cursiva escolhida para o texto convertido. */
+    fun write(context: Context, uri: Uri, rituals: List<Ritual>, fontRes: Int, fontScale: Float): Boolean {
         val doc = PdfDocument()
         var n = 1
         val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 18f; typeface = Typeface.DEFAULT_BOLD; color = Color.rgb(22, 27, 38) }
@@ -57,7 +59,10 @@ object PdfExporter {
             style = Paint.Style.STROKE; color = Color.rgb(26, 36, 64)
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         }
-        val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 11f; color = Color.rgb(22, 27, 38) }
+        val script = runCatching { ResourcesCompat.getFont(context, fontRes) }.getOrNull()
+        val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 13f * fontScale; color = Color.rgb(26, 36, 64); if (script != null) typeface = script
+        }
 
         for (r in rituals) {
             val date = LocalDate.ofEpochDay(r.epochDay)
@@ -97,7 +102,7 @@ object PdfExporter {
                     c.drawText("Texto reconhecido", M, textTop, sub)
                     val layout = StaticLayout.Builder.obtain(text, 0, text.length, body, (W - 2 * M).toInt())
                         .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                        .setMaxLines(((H - textTop - M) / 14f).toInt().coerceAtLeast(1))
+                        .setMaxLines(((H - textTop - M) / (body.textSize * 1.3f)).toInt().coerceAtLeast(1))
                         .build()
                     c.save(); c.translate(M, textTop + 8f); layout.draw(c); c.restore()
                 }
